@@ -140,6 +140,21 @@ noderesources | grep -v containerd
 
 step "restartcount: pods sorted by restart count, descending"
 restartcount
+
+step "cedevicecount: count of devices connected/onboarded to the cluster"
+cedevicecount
+
+step "cependinglist: devices pending onboarding/activation"
+cependinglist
+
+step "cewhitelist: device whitelist entries"
+cewhitelist
+
+step "cebootstrap: device bootstrap status"
+cebootstrap
+
+step "cebootstrapfailure: devices that failed bootstrap"
+cebootstrapfailure
 EOC
 
 # ----------------------------------------------------------------------------
