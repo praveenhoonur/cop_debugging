@@ -84,7 +84,7 @@ fi
 #
 # This is the exact set of Kubernetes/COP sanity-check commands to run once
 # debugaw10 has initialized the shortcut functions (awctl, lspod, podcount,
-# noderesources, restartcount, etc. come from debugaw10/bash_rc).
+# noderesource, restartcount, etc. come from debugaw10/bash_rc).
 #
 # Each command is preceded by a heading (via the `step` helper defined at
 # the top of the generated inner script) explaining what it does, so the
@@ -135,8 +135,8 @@ lspod
 step "podcount: cluster-wide pod count summary"
 podcount
 
-step "noderesources: node resource usage, excluding containerd rows"
-noderesources | grep -v containerd
+step "noderesource: node resource usage, excluding containerd rows"
+noderesource | grep -v containerd
 
 step "restartcount: pods sorted by restart count, descending"
 restartcount
