@@ -175,7 +175,6 @@ EOC
 # ----------------------------------------------------------------------------
 read -r -d '' COLLECT_POD_LOGS <<'EOC' || true
 echo ""
-echo "--- Collecting pod logs into coplogs directory ---"
 
 collect_pods_from() {
   # $1 = subdirectory name (under $COPLOGS_DIR) to collect this selector's
