@@ -155,6 +155,9 @@ cebootstrap
 
 step "cebootstrapfailure: devices that failed bootstrap"
 cebootstrapfailure
+
+step "Per-node /mnt/* disk usage (SSH to each node, requires passwordless SSH/sudo from core)"
+for i in `lsnodes | awk '{print $1}'`; do ssh $i "hostname && sudo du -sh /mnt/*"; done
 EOC
 
 # ----------------------------------------------------------------------------
