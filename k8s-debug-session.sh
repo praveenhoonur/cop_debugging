@@ -158,6 +158,9 @@ cebootstrapfailure
 
 step "Per-node /mnt/* disk usage (SSH to each node, requires passwordless SSH/sudo from core)"
 for i in `lsnodes | awk '{print $1}'`; do ssh $i "hostname && sudo du -sh /mnt/*"; done
+
+step "kubeadm certs check-expiration: control-plane certificate expiry dates"
+sudo kubeadm certs check-expiration
 EOC
 
 # ----------------------------------------------------------------------------
