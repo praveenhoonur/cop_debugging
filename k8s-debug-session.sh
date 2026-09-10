@@ -97,7 +97,19 @@ read -r -d '' DEFAULT_COMMANDS <<'EOC' || true
 echo "--- Running default predefined command block ---"
 
 step "awctl status: COP appliance/cluster status summary"
-awctl status
+AWCTL_STATUS_OUTPUT="$(awctl status)"
+echo "$AWCTL_STATUS_OUTPUT"
+
+# Extract the "Cluster FQDN" field from the awctl status output above and
+# print it as a banner heading, so the log/terminal clearly shows which
+# cluster this health check session is for.
+CLUSTER_FQDN="$(echo "$AWCTL_STATUS_OUTPUT" | grep -i 'Cluster FQDN' | head -1 | sed -E 's/^[^:]*:[[:space:]]*//')"
+if [[ -n "$CLUSTER_FQDN" ]]; then
+  echo ""
+  echo "###############################################################"
+  echo "# Health Check of ${CLUSTER_FQDN} Cluster"
+  echo "###############################################################"
+fi
 
 step "awctl version: COP/appliance software version info"
 awctl version
