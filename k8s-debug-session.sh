@@ -96,6 +96,9 @@ fi
 read -r -d '' DEFAULT_COMMANDS <<'EOC' || true
 echo "--- Running default predefined command block ---"
 
+# On-Prem Cluster Details
+section "On-Prem Cluster Details"
+
 step "awctl status: COP appliance/cluster status summary"
 AWCTL_STATUS_OUTPUT="$(awctl status)"
 echo "$AWCTL_STATUS_OUTPUT"
@@ -114,6 +117,12 @@ fi
 step "awctl version: COP/appliance software version info"
 awctl version
 
+step "upgradestatus | jq .: current upgrade status, JSON-formatted"
+upgradestatus | jq .
+
+# Control Plane
+section "Control Plane"
+
 step "kubectl top nodes: per-node CPU/memory usage"
 kubectl top nodes
 
@@ -123,14 +132,29 @@ kubectl get nodes -o wide
 step "kubectl get events -n kube-system: recent kube-system events, oldest first"
 kubectl get events -n kube-system --sort-by=.lastTimestamp
 
-step "Per-node containerd image count (SSH to each node, requires passwordless SSH/sudo from core)"
-for i in $(kubectl get nodes | grep -v NAME | awk '{print $1}' | xargs); do
-  echo "$i"
-  ssh "$i" "sudo ctr -n k8s.io i ls | wc -l"
-done
-
 step "kubectl get componentstatuses: control-plane component health"
 kubectl get componentstatuses
+
+step "Per-node /mnt/* disk usage (SSH to each node, requires passwordless SSH/sudo from core)"
+for i in `lsnodes | awk '{print $1}'`; do ssh $i "hostname && sudo du -sh /mnt/*"; done
+
+step "kubeadm certs check-expiration: control-plane certificate expiry dates"
+sudo kubeadm certs check-expiration
+
+step "noderesource: node resource usage, excluding containerd rows"
+noderesource | grep -v containerd
+
+# Cluster Status
+section "Cluster Status"
+
+step "Per-node containerd image count (SSH to each node, requires passwordless SSH/sudo from core)"
+for i in `kubectl get nodes | grep -v NAME | awk '{print $1}' | xargs`; do echo $i; ssh $i "sudo ctr -n k8s.io i ls | wc -l"; done;
+
+step "podcount: cluster-wide pod count summary"
+podcount
+
+step "restartcount: pods sorted by restart count, descending"
+restartcount
 
 step "lspodnr: pods that are NOT Running/Completed (not-ready)"
 lspodnr
@@ -138,41 +162,14 @@ lspodnr
 step "lspod | grep ivt: pods matching 'ivt' (e.g. install/validation-test pods)"
 lspod | grep ivt
 
-step "lspod | grep cop-upgrade-tools: pods matching 'cop-upgrade-tools'"
-lspod | grep cop-upgrade-tools
+step "lspod | grep cop-upgrade: pods matching 'cop-upgrade'"
+lspod | grep cop-upgrade
+
+step "lspod | grep ment-tools: pods matching 'ment-tools'"
+lspod | grep ment-tools
 
 step "lspod: all pods, all namespaces"
 lspod
-
-step "podcount: cluster-wide pod count summary"
-podcount
-
-step "noderesource: node resource usage, excluding containerd rows"
-noderesource | grep -v containerd
-
-step "restartcount: pods sorted by restart count, descending"
-restartcount
-
-step "cedevicecount: count of devices connected/onboarded to the cluster"
-cedevicecount
-
-step "cependinglist: devices pending onboarding/activation"
-cependinglist
-
-step "cewhitelist: device whitelist entries"
-cewhitelist
-
-step "cebootstrap: device bootstrap status"
-cebootstrap
-
-step "cebootstrapfailure: devices that failed bootstrap"
-cebootstrapfailure
-
-step "Per-node /mnt/* disk usage (SSH to each node, requires passwordless SSH/sudo from core)"
-for i in `lsnodes | awk '{print $1}'`; do ssh $i "hostname && sudo du -sh /mnt/*"; done
-
-step "kubeadm certs check-expiration: control-plane certificate expiry dates"
-sudo kubeadm certs check-expiration
 EOC
 
 # ----------------------------------------------------------------------------
@@ -280,6 +277,18 @@ SESSION_START_MARKER="=== SESSION START:"
   # shellcheck disable=SC2016  # intentional: $1 expands later, in-session (function argument).
   echo '  echo "STEP: $1"'
   echo '  echo "==============================================================="'
+  echo '}'
+  echo ''
+  # `section` prints a bigger banner marking the start of a logical group of
+  # commands (e.g. "On-Prem Cluster Details", "Control Plane", "Cluster
+  # Status"), so the log is easy to navigate at a glance.
+  echo '# Prints a section banner grouping related predefined commands.'
+  echo 'section() {'
+  echo '  echo ""'
+  echo '  echo "###############################################################"'
+  # shellcheck disable=SC2016  # intentional: $1 expands later, in-session (function argument).
+  echo '  echo "# SECTION: $1"'
+  echo '  echo "###############################################################"'
   echo '}'
   echo ''
   # shellcheck disable=SC2016  # intentional: $(date)/$(whoami) must expand
