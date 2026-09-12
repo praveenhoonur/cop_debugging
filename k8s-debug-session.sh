@@ -180,7 +180,10 @@ EOC
 # containers) into its own subdirectory under $COPLOGS_DIR (one
 # subdirectory per selector, per requirement 10), plus save the raw
 # selector output for reference. $COPLOGS_DIR is substituted in when the
-# inner script is generated (Section 4).
+# inner script is generated (Section 4). Within each selector's
+# subdirectory, pod logs are further grouped into a per-namespace
+# directory (created on demand), so logs for pods sharing a namespace
+# land together (e.g. $COPLOGS_DIR/lspodnr/kube-system/<pod>.log).
 # ----------------------------------------------------------------------------
 read -r -d '' COLLECT_POD_LOGS <<'EOC' || true
 echo ""
@@ -208,9 +211,14 @@ collect_pods_from() {
     if [[ ! "$ns" =~ ^[a-z0-9.-]+$ || ! "$pod" =~ ^[a-z0-9.-]+$ ]]; then
       continue
     fi
+    # Group this pod's log under a per-namespace directory (created on
+    # demand) inside the selector's subdirectory, instead of flattening
+    # all pods from all namespaces into one directory.
+    local ns_dir="$dest_dir/$ns"
+    mkdir -p "$ns_dir"
     echo "  [$subdir] collecting logs: ns=$ns pod=$pod"
     kubectl logs -n "$ns" "$pod" --all-containers=true --tail=1000 \
-      > "$dest_dir/${ns}_${pod}.log" 2>&1
+      > "$ns_dir/${pod}.log" 2>&1
   done
 }
 
