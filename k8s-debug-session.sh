@@ -192,7 +192,10 @@ EOC
 # `lspod | grep cop-upgrade-tools`, fetch its `kubectl logs` (all
 # containers) into its own subdirectory under $COPLOGS_DIR (one
 # subdirectory per selector, per requirement 10), plus save the raw
-# selector output for reference. Additionally, collect_all_pod_logs() runs
+# selector output for reference. For the `lspodnr` selector specifically,
+# also collect `kubectl describe pod` output for each pod (alongside its
+# log), since not-ready pods are best diagnosed via describe (events,
+# conditions, container states). Additionally, collect_all_pod_logs() runs
 # the requested command verbatim from within $COPLOGS_DIR, so its
 # per-namespace directories (one per namespace, containing
 # "<pod>.log" files) are created directly under $COPLOGS_DIR. $COPLOGS_DIR is
@@ -233,6 +236,20 @@ collect_pods_from() {
     else
       kubectl logs -n "$ns" "$pod" --all-containers=true --tail=1000 \
         > "$dest_dir/${ns}_${pod}.log" 2>&1
+    fi
+    # For the lspodnr (not-ready pods) selector, also collect
+    # `kubectl describe pod` output alongside each pod's log, since
+    # describe output (events, conditions, container states) is often
+    # the most useful signal for diagnosing why a pod isn't ready.
+    if [[ "$subdir" == "lspodnr" ]]; then
+      echo "  [$subdir] collecting describe: ns=$ns pod=$pod"
+      if [[ "${GROUP_BY_NS:-0}" == "1" ]]; then
+        kubectl describe pod -n "$ns" "$pod" \
+          > "$ns_dir/${pod}.describe.txt" 2>&1
+      else
+        kubectl describe pod -n "$ns" "$pod" \
+          > "$dest_dir/${ns}_${pod}.describe.txt" 2>&1
+      fi
     fi
   done
 }
