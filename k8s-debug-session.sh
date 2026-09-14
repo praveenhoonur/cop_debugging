@@ -18,11 +18,13 @@
 #      pods, and COP upgrade-tools pods) into a timestamped
 #      /tmp/coplogs-<timestamp>/ directory, each selector's pod logs in its
 #      own subdirectory (lspodnr/, lspod_ivt/, lspod_cop_upgrade_tools/),
+#      named "<namespace>_<pod>.log" by default, or grouped into a
+#      per-namespace subdirectory when -g/--group-by-namespace is passed,
 #      copies the full session log into it too, and tars/gzips the whole
 #      directory for easy handoff (e.g. attaching to a support case).
 #
 # Usage:
-#   ./k8s-debug-session.sh [-f commands-file.sh] [-l log-dir] [-u core] [-h]
+#   ./k8s-debug-session.sh [-f commands-file.sh] [-l log-dir] [-u core] [-g] [-h]
 #
 # Options:
 #   -f, --commands-file <file>  External file of bash commands to run after
@@ -32,6 +34,11 @@
 #   -l, --log-dir <dir>         Directory to write the session log into.
 #                                Default: /tmp
 #   -u, --user <user>           Remote user to `su` into. Default: core
+#   -g, --group-by-namespace    Group collected pod logs into a per-namespace
+#                                subdirectory under each selector's coplogs
+#                                directory (e.g. lspodnr/kube-system/pod.log)
+#                                instead of the default flat
+#                                "<namespace>_<pod>.log" naming.
 #   -h, --help                  Show this help and exit
 #
 # Customizing what runs:
@@ -58,6 +65,7 @@ set -uo pipefail
 LOG_DIR="/tmp"
 TARGET_USER="core"
 COMMANDS_FILE=""
+GROUP_BY_NS="0"
 
 usage() {
   grep '^#' "$0" | sed 's/^# \{0,1\}//'
@@ -68,6 +76,7 @@ while [[ $# -gt 0 ]]; do
     -f|--commands-file) COMMANDS_FILE="$2"; shift 2 ;;
     -l|--log-dir)        LOG_DIR="$2"; shift 2 ;;
     -u|--user)           TARGET_USER="$2"; shift 2 ;;
+    -g|--group-by-namespace) GROUP_BY_NS="1"; shift ;;
     -h|--help)           usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage; exit 1 ;;
   esac
@@ -209,8 +218,15 @@ collect_pods_from() {
       continue
     fi
     echo "  [$subdir] collecting logs: ns=$ns pod=$pod"
-    kubectl logs -n "$ns" "$pod" --all-containers=true --tail=1000 \
-      > "$dest_dir/${ns}_${pod}.log" 2>&1
+    if [[ "${GROUP_BY_NS:-0}" == "1" ]]; then
+      local ns_dir="$dest_dir/$ns"
+      mkdir -p "$ns_dir"
+      kubectl logs -n "$ns" "$pod" --all-containers=true --tail=1000 \
+        > "$ns_dir/${pod}.log" 2>&1
+    else
+      kubectl logs -n "$ns" "$pod" --all-containers=true --tail=1000 \
+        > "$dest_dir/${ns}_${pod}.log" 2>&1
+    fi
   done
 }
 
@@ -325,6 +341,11 @@ SESSION_START_MARKER="=== SESSION START:"
   # inner session writes/collects pod logs into the SAME directory the
   # outer script will later tar up in Section 7.
   echo "COPLOGS_DIR='${COPLOGS_DIR}'"
+  # GROUP_BY_NS controls whether collect_pods_from() (in COLLECT_POD_LOGS
+  # below) groups each selector's pod logs into per-namespace
+  # subdirectories (-g/--group-by-namespace) or uses the default flat
+  # "<namespace>_<pod>.log" naming.
+  echo "GROUP_BY_NS='${GROUP_BY_NS}'"
   echo ''
   echo 'echo "--- Running predefined commands ---"'
 
