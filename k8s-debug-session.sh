@@ -19,7 +19,9 @@
 #      pod in EVERY namespace (via kubectl directly), into a
 #      timestamped /tmp/coplogs-<timestamp>/ directory, each selector's pod
 #      logs in its own subdirectory (lspodnr/, lspod_ivt/,
-#      lspod_cop_upgrade_tools/, all_pods/<namespace>/),
+#      lspod_cop_upgrade_tools/), while the all-namespace/all-pod
+#      collection creates its per-namespace directories directly under
+#      /tmp/coplogs-<timestamp>/,
 #      named "<namespace>_<pod>.log" by default, or grouped into a
 #      per-namespace subdirectory when -g/--group-by-namespace is passed,
 #      copies the full session log into it too, and tars/gzips the whole
@@ -190,10 +192,10 @@ EOC
 # `lspod | grep cop-upgrade-tools`, fetch its `kubectl logs` (all
 # containers) into its own subdirectory under $COPLOGS_DIR (one
 # subdirectory per selector, per requirement 10), plus save the raw
-# selector output for reference. Additionally, collect_all_pod_logs()
-# fetches logs for EVERY pod in EVERY namespace directly via kubectl (not
-# relying on the lspod/lspodnr shortcut functions), grouped into a
-# per-namespace subdirectory under $COPLOGS_DIR/all_pods. $COPLOGS_DIR is
+# selector output for reference. Additionally, collect_all_pod_logs() runs
+# the requested command verbatim from within $COPLOGS_DIR, so its
+# per-namespace directories (one per namespace, containing
+# "<pod>.log" files) are created directly under $COPLOGS_DIR. $COPLOGS_DIR is
 # substituted in when the inner script is generated (Section 4).
 # ----------------------------------------------------------------------------
 read -r -d '' COLLECT_POD_LOGS <<'EOC' || true
@@ -240,17 +242,15 @@ collect_pods_from "lspod_ivt" "lspod | grep ivt"
 collect_pods_from "lspod_cop_upgrade_tools" "lspod | grep cop-upgrade-tools"
 
 # Collect logs for EVERY pod in EVERY namespace (via kubectl directly,
-# independent of the lspod/lspodnr shortcut functions), grouped into a
-# per-namespace subdirectory under $COPLOGS_DIR/all_pods.
+# independent of the lspod/lspodnr shortcut functions), run verbatim from
+# within $COPLOGS_DIR so the per-namespace directories it creates land
+# directly there (no extra wrapper subdirectory).
 collect_all_pod_logs() {
-  local dest_dir="$COPLOGS_DIR/all_pods"
-  mkdir -p "$dest_dir"
   echo "  [all_pods] collecting logs for all pods in all namespaces"
-  for NS in $(kubectl get ns -o jsonpath='{.items[*].metadata.name}'); do
-    mkdir -p "$dest_dir/$NS" && for POD in $(kubectl get pods -n "$NS" -o jsonpath='{.items[*].metadata.name}'); do
-      kubectl logs "$POD" -n "$NS" --all-containers=true --tail=-1 > "$dest_dir/$NS/$POD.log" 2>&1
-    done
-  done
+  (
+    cd "$COPLOGS_DIR" && \
+    for NS in $(kubectl get ns -o jsonpath='{.items[*].metadata.name}'); do mkdir -p "$NS" && for POD in $(kubectl get pods -n "$NS" -o jsonpath='{.items[*].metadata.name}'); do kubectl logs "$POD" -n "$NS" --all-containers=true --tail=-1 > "$NS/$POD.log" 2>&1; done; done
+  )
 }
 
 collect_all_pod_logs
