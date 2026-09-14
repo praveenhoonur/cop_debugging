@@ -14,11 +14,11 @@
 #   4. Captures all stdout+stderr of the whole session to a timestamped log
 #      file while also streaming it live to the terminal.
 #   5. Also collects individual pod logs (from `lspodnr`, `lspod | grep ivt`,
-#      `lspod | grep cop-upgrade-tools`, and `lspod`, i.e. not-ready pods,
-#      "ivt" pods, COP upgrade-tools pods, and ALL pods cluster-wide) into a
+#      and `lspod | grep cop-upgrade-tools`, i.e. not-ready pods, "ivt"
+#      pods, and COP upgrade-tools pods) into a
 #      timestamped /tmp/coplogs-<timestamp>/ directory, each selector's pod
 #      logs in its own subdirectory (lspodnr/, lspod_ivt/,
-#      lspod_cop_upgrade_tools/, lspod/),
+#      lspod_cop_upgrade_tools/),
 #      named "<namespace>_<pod>.log" by default, or grouped into a
 #      per-namespace subdirectory when -g/--group-by-namespace is passed,
 #      copies the full session log into it too, and tars/gzips the whole
@@ -234,7 +234,6 @@ collect_pods_from() {
 collect_pods_from "lspodnr" "lspodnr"
 collect_pods_from "lspod_ivt" "lspod | grep ivt"
 collect_pods_from "lspod_cop_upgrade_tools" "lspod | grep cop-upgrade-tools"
-collect_pods_from "lspod" "lspod"
 
 echo "--- Pod log collection complete: $COPLOGS_DIR ---"
 EOC
