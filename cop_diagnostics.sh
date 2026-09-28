@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# k8s-debug-session.sh
+# cop_diagnostics.sh
 #
 # Automates a privileged Kubernetes debugging session:
 #   1. Opens a single persistent `sudo su - core` shell.
@@ -28,7 +28,7 @@
 #      directory for easy handoff (e.g. attaching to a support case).
 #
 # Usage:
-#   ./k8s-debug-session.sh [-f commands-file.sh] [-l log-dir] [-u core] [-g] [-h]
+#   ./cop_diagnostics.sh [-f commands-file.sh] [-l log-dir] [-u core] [-g] [-h]
 #
 # Options:
 #   -f, --commands-file <file>  External file of bash commands to run after
@@ -168,6 +168,21 @@ podcount
 
 step "restartcount: pods sorted by restart count, descending"
 restartcount
+
+step "cedevicecount: count of devices connected/onboarded to the cluster"
+cedevicecount
+
+step "cependinglist: devices pending onboarding/activation"
+cependinglist
+
+step "cewhitelist: device whitelist entries"
+cewhitelist
+
+step "cebootstrap: device bootstrap status"
+cebootstrap
+
+step "cebootstrapfailure: devices that failed bootstrap"
+cebootstrapfailure
 
 step "lspodnr: pods that are NOT Running/Completed (not-ready)"
 lspodnr
